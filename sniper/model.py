@@ -50,9 +50,12 @@ def fetch_btc_volatility() -> VolatilityData:
         r2.raise_for_status()
         prices = [p[1] for p in r2.json()["prices"]]
 
-    # Calculate log-return volatility
+    # Calculate log-return volatility (standard deviation)
     log_returns = [math.log(prices[i] / prices[i - 1]) for i in range(1, len(prices))]
-    daily_vol = math.sqrt(sum(r**2 for r in log_returns) / len(log_returns))
+    mean_r = sum(log_returns) / len(log_returns)
+    daily_vol = math.sqrt(
+        sum((r - mean_r) ** 2 for r in log_returns) / (len(log_returns) - 1)
+    )
 
     # Apply multiplier for safety margin
     daily_vol *= settings.volatility_multiplier

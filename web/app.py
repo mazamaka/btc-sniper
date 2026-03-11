@@ -31,7 +31,7 @@ async def broadcast(event: str, data: dict | str) -> None:
         {"event": event, "data": data, "ts": datetime.now(tz=timezone.utc).isoformat()}
     )
     dead: set[WebSocket] = set()
-    for client in ws_clients:
+    for client in list(ws_clients):
         try:
             await client.send_text(msg)
         except Exception:

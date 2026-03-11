@@ -1,6 +1,7 @@
 """BTC Sniper Engine — core trading loop."""
 
 import logging
+import threading
 from datetime import datetime, timezone
 
 from config import settings
@@ -20,6 +21,7 @@ class SniperEngine:
         self.last_markets: list[BTCMarket] = []
         self.scan_count: int = 0
         self.listeners: list = []  # callbacks for UI updates
+        self._lock = threading.Lock()
 
     def _notify(self, event: str, data: dict) -> None:
         for cb in self.listeners:
@@ -30,7 +32,8 @@ class SniperEngine:
 
     def update_volatility(self) -> VolatilityData:
         """Refresh BTC price and volatility data."""
-        self.vol_data = fetch_btc_volatility()
+        with self._lock:
+            self.vol_data = fetch_btc_volatility()
         self._notify(
             "price",
             {
@@ -42,6 +45,10 @@ class SniperEngine:
 
     def scan(self) -> dict:
         """Run a full scan: fetch markets, compute signals, execute trades."""
+        with self._lock:
+            return self._scan_inner()
+
+    def _scan_inner(self) -> dict:
         self.scan_count += 1
         logger.info("=== SCAN #%d ===", self.scan_count)
 
@@ -77,7 +84,7 @@ class SniperEngine:
             # Check exposure limit
             if (
                 self.portfolio.exposure
-                >= self.portfolio.balance * settings.max_total_exposure_pct
+                >= self.portfolio.equity * settings.max_total_exposure_pct
             ):
                 logger.info("Exposure limit reached, stopping")
                 break
@@ -89,6 +96,8 @@ class SniperEngine:
                 trade_size, self.portfolio.balance * settings.max_trade_pct
             )
 
+            if trade_size > self.portfolio.balance:
+                continue
             if trade_size > self.portfolio.balance * 0.95:
                 continue
             if trade_size < settings.min_trade_size:
@@ -159,6 +168,10 @@ class SniperEngine:
 
     def check_resolutions(self) -> int:
         """Check if any open trades have expired and resolve them."""
+        with self._lock:
+            return self._check_resolutions_inner()
+
+    def _check_resolutions_inner(self) -> int:
         if not self.vol_data:
             return 0
 

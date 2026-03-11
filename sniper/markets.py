@@ -122,7 +122,7 @@ def _parse_updown_expiry(text: str) -> tuple[str, float]:
                     t2 = dt.strptime(end_str, fmt)
                     mins = (t2 - t1).total_seconds() / 60
                     if mins <= 0:
-                        mins += 12 * 60
+                        mins += 24 * 60
                     return date_part, mins / (24 * 60)
                 except ValueError:
                     continue

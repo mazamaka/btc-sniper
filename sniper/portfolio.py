@@ -211,6 +211,8 @@ class Portfolio:
         }
 
     def _record_equity(self) -> None:
+        if len(self.equity_curve) > 500:
+            self.equity_curve = self.equity_curve[-400:]
         self.equity_curve.append(
             {
                 "ts": datetime.now(tz=timezone.utc).isoformat(),
